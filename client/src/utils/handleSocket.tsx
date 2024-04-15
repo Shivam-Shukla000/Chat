@@ -19,6 +19,24 @@ let remotePeers: IPeers[] = [];
 let localStream: MediaStream;
 let myId: string;
 
+const peerExist = (userId: string) => {
+  remotePeers.forEach((peerObject) => {
+    if (userId === peerObject.userId) {
+      return true;
+    }
+  });
+  return false;
+};
+
+const getPeerById = (peerId: string) => {
+  remotePeers.forEach((peerObject) => {
+    if (peerId === peerObject.userId) {
+      return peerObject.peer;
+    }
+  });
+  return null;
+};
+
 const createPeerConnection = async (
   roomId: string,
   socket: Socket,
