@@ -19,13 +19,9 @@ const io = new Server(server, {
 
 io.on("connection", (socket: Socket) => {
   const userId = uuidV4();
-  socketRoutes(socket);
+  socketRoutes(socket, io, userId);
 
   socket.emit("userId", `userId--|--${userId}`);
-
-  socket.on("disconnect", () => {
-    console.log("user disconnected");
-  });
   console.log("user connected ");
 });
 

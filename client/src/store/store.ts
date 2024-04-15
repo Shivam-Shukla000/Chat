@@ -1,23 +1,37 @@
-import Peer from "peerjs";
 import { Socket } from "socket.io-client";
 import { create } from "zustand";
 
+type IRemoteStreams = {
+  stream: MediaStream;
+  id: string;
+};
+
 type IUseSocketStore = {
   socket: Socket | null;
+  userId: string | null;
   connected: boolean;
-  peer: Peer | null;
-  stream: MediaStream | null;
+  peer: RTCPeerConnection | null;
+  localStream: MediaStream | null;
+  roomId: string | null;
+  remoteStreams: IRemoteStreams[] | [];
   setSocket: (socket: Socket) => void;
   clearSocket: () => void;
   setConnected: (bool: boolean) => void;
-  setPeer: (peer: Peer) => void;
-  setStream: (stream: MediaStream) => void;
+  setPeer: (peer: RTCPeerConnection) => void;
+  setLocalStream: (localStream: MediaStream) => void;
+  setUserId: (userId: string) => void;
+  setRoomId: (roomId: string) => void;
+
+  setRemoteStreams: (stream: MediaStream, id: string) => void;
 };
 const useSocketStore = create<IUseSocketStore>((set) => ({
   socket: null,
+  userId: null,
   connected: false,
   peer: null,
-  stream: null,
+  localStream: null,
+  roomId: null,
+  remoteStreams: [],
   setSocket: (socket) => {
     set({ socket: socket });
   },
@@ -30,8 +44,19 @@ const useSocketStore = create<IUseSocketStore>((set) => ({
   setPeer: (peer) => {
     set({ peer });
   },
-  setStream: (stream) => {
-    set({ stream });
+  setLocalStream: (localStream) => {
+    set({ localStream });
+  },
+  setUserId: (userId) => {
+    set({ userId });
+  },
+  setRoomId: (roomId) => {
+    set({ roomId });
+  },
+  setRemoteStreams: (stream, id) => {
+    set((state) => ({
+      remoteStreams: [...state.remoteStreams, { stream, id }],
+    }));
   },
 }));
 

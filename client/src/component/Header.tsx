@@ -4,7 +4,8 @@ import { Connecting, Online } from "./status";
 
 const Header = () => {
   const connected = useSocketStore((state) => state.connected);
-  const peer = useSocketStore((state) => state.peer);
+  // const peer = useSocketStore((state) => state.peer);
+  const userId = useSocketStore((state) => state.userId);
   return (
     <>
       <Box width={"100%"} height={"7%"}>
@@ -20,7 +21,7 @@ const Header = () => {
             </Box>
           </Flex>
           <Flex gap={"2"} alignItems={"center"}>
-            <Box>{peer?.id}</Box>
+            <Box>{userId}</Box>
             {connected ? <Online /> : <Connecting />}
           </Flex>
         </Flex>
