@@ -1,7 +1,13 @@
 import { Socket } from "socket.io-client";
 
-const createLobby = (socket: Socket) => {
-  socket.emit("create-room");
+type ILobbyData = {
+  name: string;
+  password: string;
+  size: number;
+};
+
+const createLobby = (socket: Socket, lobbydata: ILobbyData) => {
+  socket.emit("create-room", lobbydata);
 
   console.log("create lobby");
 };

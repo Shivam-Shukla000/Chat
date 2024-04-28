@@ -15,8 +15,8 @@ const Header = () => {
           height={"100%"}
         >
           <Flex gap={"2"} alignItems={"center"} margin={"0% 0% 0% .5%"}>
-            <Avatar size={"md"}></Avatar>
-            <Box fontSize={"xx-large"} marginLeft={"1%"}>
+            {/* <Avatar size={"md"}></Avatar> */}
+            <Box fontSize={"xxx-large"} marginLeft={"1%"}>
               Pincord
             </Box>
           </Flex>

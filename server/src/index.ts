@@ -4,6 +4,7 @@ import { Server, Socket } from "socket.io";
 import cors from "cors";
 import { v4 as uuidV4 } from "uuid";
 import { socketRoutes } from "./Routes/socketRoutes";
+import { addToSocketArray } from "./lib/socketLib";
 
 const port = 4000;
 
@@ -22,6 +23,7 @@ io.on("connection", (socket: Socket) => {
   socketRoutes(socket, io, userId);
 
   socket.emit("userId", `userId--|--${userId}`);
+  addToSocketArray(socket, userId);
   console.log("user connected ");
 });
 

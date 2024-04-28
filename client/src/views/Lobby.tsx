@@ -1,43 +1,41 @@
 import { useEffect, useState } from "react";
 import { useSocketStore } from "../store/store";
 import MyVideoStream from "../component/MyVideoStream";
-import { Grid } from "@chakra-ui/react";
+import { Box, Button, Grid, AbsoluteCenter } from "@chakra-ui/react";
+import { setStateOfMedia } from "../utils/handleSocket";
 
 const Lobby: () => JSX.Element = () => {
-  const remoteStreams = useSocketStore((state) => state.remoteStreams);
+  const signal = useSocketStore((state) => state.signal);
+  const setSignal = useSocketStore((state) => state.setSignal);
 
+  // const setRemoteStreams = useSocketStore((state) => state.setRemoteStreams);
+  type IRemoteStreams = {
+    stream: MediaStream;
+    id: string;
+  };
+  // const [remoteStreams1, setRemoteStreams1] = useState<IRemoteStreams[]>([]);
   const [renderList, setRenderList] = useState<JSX.Element[]>([]);
+  let colum = `repeat(${2} , 1fr)`;
+  const handleRefresh = () => {
+    setSignal();
+  };
 
   useEffect(() => {
-    const videos: JSX.Element[] = remoteStreams.map((stream) => {
-      return (
-        <>
-          <video
-            key={stream.id}
-            id={stream.id}
-            ref={(ref) => {
-              if (ref) {
-                ref.srcObject = stream.stream;
-              }
-            }}
-            autoPlay
-            playsInline
-            muted
-          ></video>
-        </>
-      );
-    });
-
-    setRenderList(videos);
-  }, [remoteStreams]);
+    const streamLength = setStateOfMedia(setRenderList);
+    console.log(streamLength);
+    console.log("refreshed from signal");
+  }, [signal]);
 
   return (
     <>
-      <Grid width={"100%"} height={"70%"}>
-        <MyVideoStream />
+      <Box>
+        <Button onClick={handleRefresh}>refresh</Button>
+        <Grid templateColumns={colum} width={"100%"} height={"70%"}>
+          <MyVideoStream />
 
-        {renderList}
-      </Grid>
+          {renderList}
+        </Grid>
+      </Box>
     </>
   );
 };

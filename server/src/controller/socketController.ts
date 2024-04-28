@@ -1,6 +1,17 @@
 import { Server, Socket } from "socket.io";
+import { getSocketById } from "../lib/socketLib";
 
-const rooms: string[] = [];
+type IData = {
+  name: string;
+  password: string;
+  size: number;
+};
+
+interface ILobbyData extends IData {
+  roomId: string;
+}
+
+const rooms: ILobbyData[] = [];
 
 const getSocketRoom = (socket: Socket) => {
   const array: string[] = [];
@@ -22,24 +33,25 @@ const clearSocketRooms = (socket: Socket) => {
 };
 
 import { v4 as uuidV4 } from "uuid";
-const handleCreateRoom = (socket: Socket, io: Server, userId: string) => {
+const handleCreateRoom = (socket: Socket, data: IData) => {
   clearSocketRooms(socket);
   const roomId = uuidV4();
+  rooms.push({ ...data, roomId });
+  console.log(rooms);
   socket.join(roomId);
-  rooms.push(roomId);
-  io.to(roomId).emit("user-joined", userId);
   socket.emit("room-joined", `roomId--|--${roomId}`);
 };
 
-//called when new user joins
+// called when new user joins
 const handleJoinRoom = async (
   socket: Socket,
   userId: string,
   roomId: string,
   io: Server
 ) => {
-  // const sockets = await io.in(roomId).fetchSockets();
-  // console.log(sockets);
+  const sockets = await io.in(roomId).fetchSockets();
+  console.log(sockets.length);
+  console.log("room joined");
 
   clearSocketRooms(socket);
   socket.join(roomId);
@@ -55,18 +67,65 @@ const handleOffer = (
   recieverId: string
 ) => {
   socket.to(roomId).emit("offer", sdpOffer, senderId, recieverId);
+  console.log("offer send");
 };
 
 const handleAnswer = (
   sdpAnswer: RTCSessionDescriptionInit,
   roomId: string,
   socket: Socket,
-  userId: string
+  senderId: string,
+  recieverId: string
 ) => {
-  socket.to(roomId).emit("answer", sdpAnswer, userId);
+  socket.to(roomId).emit("answer", sdpAnswer, senderId, recieverId);
+  console.log("answer sent");
 };
 
-const getRoomList = (cb: (arr: string[]) => void) => {
+const handleMessageSend = (
+  socket: Socket,
+  message: string,
+  userId: string,
+  roomId: string,
+  cb: () => void
+) => {
+  socket.to(roomId).emit("message", message, userId);
+  cb();
+};
+
+const handleDataSdpOffer = (
+  dataSdpOffer: RTCSessionDescriptionInit,
+  senderId: string,
+  recieverId: string
+) => {
+  const socket = getSocketById(recieverId);
+  if (socket) {
+    socket.emit("dataSdpOffer", dataSdpOffer, senderId);
+  }
+};
+
+const handleDataSdpAnswer = (
+  dataSdpAnswer: RTCSessionDescriptionInit,
+  senderId: string,
+  recieverId: string
+) => {
+  const socket = getSocketById(recieverId);
+  if (socket) {
+    socket.emit("dataSdpAnswer", dataSdpAnswer, senderId);
+  }
+};
+
+const handleDataIceCandidate = (
+  dataIceCandidate: RTCIceCandidate,
+  senderId: string,
+  recieverId: string
+) => {
+  const socket = getSocketById(recieverId);
+  if (socket) {
+    socket.emit("dataIceCandidate", dataIceCandidate, senderId);
+  }
+};
+
+const getRoomList = (cb: (lobbyData: ILobbyData[]) => void) => {
   cb(rooms);
 };
 
@@ -76,4 +135,8 @@ export {
   handleAnswer,
   handleJoinRoom,
   getRoomList,
+  handleMessageSend,
+  handleDataSdpOffer,
+  handleDataSdpAnswer,
+  handleDataIceCandidate,
 };

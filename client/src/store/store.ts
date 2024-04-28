@@ -10,28 +10,27 @@ type IUseSocketStore = {
   socket: Socket | null;
   userId: string | null;
   connected: boolean;
-  peer: RTCPeerConnection | null;
   localStream: MediaStream | null;
   roomId: string | null;
   remoteStreams: IRemoteStreams[] | [];
+  signal: number;
   setSocket: (socket: Socket) => void;
   clearSocket: () => void;
   setConnected: (bool: boolean) => void;
-  setPeer: (peer: RTCPeerConnection) => void;
   setLocalStream: (localStream: MediaStream) => void;
   setUserId: (userId: string) => void;
   setRoomId: (roomId: string) => void;
-
-  setRemoteStreams: (stream: MediaStream, id: string) => void;
+  setRemoteStreams: (remoteStreams: IRemoteStreams[] | []) => void;
+  setSignal: () => void;
 };
 const useSocketStore = create<IUseSocketStore>((set) => ({
   socket: null,
   userId: null,
   connected: false,
-  peer: null,
   localStream: null,
   roomId: null,
   remoteStreams: [],
+  signal: 0,
   setSocket: (socket) => {
     set({ socket: socket });
   },
@@ -41,9 +40,7 @@ const useSocketStore = create<IUseSocketStore>((set) => ({
   setConnected: (bool) => {
     set({ connected: bool });
   },
-  setPeer: (peer) => {
-    set({ peer });
-  },
+
   setLocalStream: (localStream) => {
     set({ localStream });
   },
@@ -53,9 +50,14 @@ const useSocketStore = create<IUseSocketStore>((set) => ({
   setRoomId: (roomId) => {
     set({ roomId });
   },
-  setRemoteStreams: (stream, id) => {
+  setRemoteStreams: (remoteStreams) => {
+    set({
+      remoteStreams: remoteStreams,
+    });
+  },
+  setSignal: () => {
     set((state) => ({
-      remoteStreams: [...state.remoteStreams, { stream, id }],
+      signal: state.signal + 1,
     }));
   },
 }));

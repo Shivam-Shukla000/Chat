@@ -22,10 +22,8 @@ function App() {
   const setSocket = useSocketStore((state) => state.setSocket);
   const connected = useSocketStore((state) => state.connected);
   const setConnected = useSocketStore((state) => state.setConnected);
-  const peer = useSocketStore((state) => state.peer);
-  const setPeer = useSocketStore((state) => state.setPeer);
   const setLocalStream = useSocketStore((state) => state.setLocalStream);
-  const setRemoteStreams = useSocketStore((state) => state.setRemoteStreams);
+  const setSignal = useSocketStore((state) => state.setSignal);
 
   useEffect(() => {
     if (connected) {
@@ -40,6 +38,8 @@ function App() {
   if (socket) {
     socket.on("connect", () => {
       setConnected(true);
+      console.log("ran");
+
       handleSocket(
         socket,
         setConnected,
@@ -47,8 +47,7 @@ function App() {
         userId,
         setUserId,
         setLocalStream,
-        setRemoteStreams,
-        setPeer
+        setSignal
       );
     });
   } else {
