@@ -29,13 +29,21 @@ let remotePeers: IPeers[] = [];
 let dataPeers: IDataPeers[] = [];
 let localStream: MediaStream;
 let myId: string;
+let dataChannel: { channel: RTCDataChannel; id: string } | null = null;
+let pendingRequestId: string | null = null;
+
+const setPendingRequestId = (id: string | null) => {
+  pendingRequestId = id;
+};
+
+const getPendingRequestId = () => {
+  return pendingRequestId;
+};
 
 const addDataPeer: (peer: RTCPeerConnection, id: string) => void = (
   peer,
   id
 ) => {
-  console.log("added tp datapeers");
-
   dataPeers.push({ peer: peer, userId: id });
 };
 
@@ -64,18 +72,24 @@ const dataPeerExist = (userId: string) => {
 
 const connectPeer = (id: string, socket: Socket) => {
   let peer: RTCPeerConnection | null = null;
-  if (peerExist(id)) {
+  if (dataPeerExist(id)) {
     peer = getDataPeerById(id);
-    console.log(peer);
   } else {
     peer = new RTCPeerConnection(peerConfiguration);
   }
+  socket.on(
+    "dataSdpAnswer",
+    async (dataSdpAnswer: RTCSessionDescription, senderId: string) => {
+      if (peer && senderId === id) {
+        await peer.setRemoteDescription(dataSdpAnswer);
+      }
+    }
+  );
   if (peer) {
     peer.onnegotiationneeded = async (event) => {
       const sdpOffer = await peer.createOffer();
       await peer.setLocalDescription(sdpOffer);
       socket.emit("dataSdpOffer", sdpOffer, myId, id);
-      console.log("negotiate", peer.iceConnectionState);
     };
     peer.onicecandidate = (event) => {
       if (event.candidate) {
@@ -84,10 +98,12 @@ const connectPeer = (id: string, socket: Socket) => {
     };
 
     const dataChannel = peer.createDataChannel("myChannel");
-    console.log("channel made", dataChannel);
+
     dataChannel.onopen = (event) => {
-      console.log("onopen", event);
+      dataChannel.onmessage = (event) => {};
+      dataChannel.send("msg from sender");
     };
+    setDataChannel(dataChannel, id);
     addDataPeer(peer, id);
   }
   // peer = new RTCPeerConnection(peerConfiguration);
@@ -182,7 +198,6 @@ const createPeerConnection = async (
   setLocalStream(localStream);
 
   pc.ontrack = (event) => {
-    console.log("pc on track");
     if (!remoteStreamExist(userId)) {
       remoteStreams.push({ stream: event.streams[0], id: userId });
       setSignal();
@@ -277,59 +292,14 @@ const handleSocket = (
   socket.on("userId", (userId1: string) => {
     myId = userId1.split("--|--")[1];
     setUserId(myId);
-    socket.on(
-      "dataSdpOffer",
-      async (dataSdpOffer: RTCSessionDescription, senderId: string) => {
-        if (!dataPeerExist(senderId)) {
-          let pc = new RTCPeerConnection(peerConfiguration);
-          await pc.setRemoteDescription(dataSdpOffer);
 
-          const dataSdpAnswer = await pc.createAnswer();
+    socket.on("request-to-send-file", (senderId) => {
+      setPendingRequestId(senderId);
+    });
 
-          pc.setLocalDescription(dataSdpAnswer);
-
-          socket.emit("dataSdpAnswer", dataSdpAnswer, myId, senderId);
-          pc.onicecandidate = (event) => {
-            console.log("ice data inside ");
-
-            if (event.candidate) {
-              socket.emit("dataIceCandidate", event.candidate, myId, senderId);
-            }
-          };
-          pc.ondatachannel = (event) => {
-            console.log("data channel", event);
-          };
-          addDataPeer(pc, senderId);
-        }
-      }
-    );
-    socket.on(
-      "dataSdpAnswer",
-      async (dataSdpAnswer: RTCSessionDescription, senderId: string) => {
-        if (dataPeerExist(senderId)) {
-          const peer = getDataPeerById(senderId);
-          if (peer) {
-            await peer.setRemoteDescription(dataSdpAnswer);
-          }
-        }
-      }
-    );
-    socket.on(
-      "dataIceCandidate",
-      async (dataIceCandidate: RTCIceCandidateInit, senderId: string) => {
-        if (dataPeerExist(senderId)) {
-          const peer = getDataPeerById(senderId);
-
-          if (peer) {
-            await peer.addIceCandidate(dataIceCandidate);
-          }
-        }
-      }
-    );
     socket.on("room-joined", (roomData: string) => {
       const roomId1 = roomData.split("--|--")[1];
       setRoomId(roomId1);
-      console.log("room joined");
 
       // const peer = await createOffer(
       //   roomId1,
@@ -339,8 +309,6 @@ const handleSocket = (
       // );
       socket.on("user-joined", async (userId: string) => {
         // check peerExist to avoid making duplicates
-        console.log("userJoined");
-        console.log(!peerExist(userId));
 
         if (!peerExist(userId)) {
           const peer = await createOffer(
@@ -350,12 +318,9 @@ const handleSocket = (
             userId,
             setSignal
           );
-          console.log("made peer");
 
           if (peer) {
             remotePeers.push({ peer, userId });
-            console.log(remotePeers);
-            console.log("new peer addded");
           }
         }
       });
@@ -384,7 +349,6 @@ const handleSocket = (
               if (peer) {
                 remotePeers.push({ peer, userId: senderId });
               }
-              console.log("offer recied answer made");
             }
           }
         }
@@ -404,7 +368,6 @@ const handleSocket = (
               if (peer) {
                 peer.iceGatheringState;
                 peer.setRemoteDescription(sdpAnswer);
-                console.log("added sdp answer to peer");
               }
             }
           } catch (error) {
@@ -437,6 +400,64 @@ const handleSocket = (
   });
 };
 
+const handleDataRequestSocket = (socket: Socket, id: string) => {
+  socket.on(
+    "dataSdpOffer",
+    async (dataSdpOffer: RTCSessionDescription, senderId: string) => {
+      if (!dataPeerExist(senderId) && senderId === id) {
+        let pc = new RTCPeerConnection(peerConfiguration);
+        await pc.setRemoteDescription(dataSdpOffer);
+
+        const dataSdpAnswer = await pc.createAnswer();
+
+        pc.setLocalDescription(dataSdpAnswer);
+
+        socket.emit("dataSdpAnswer", dataSdpAnswer, myId, senderId);
+        pc.onicecandidate = (event) => {
+          if (event.candidate) {
+            socket.emit("dataIceCandidate", event.candidate, myId, senderId);
+          }
+        };
+        pc.ondatachannel = (event) => {
+          event.channel.onmessage = (event) => {
+            console.log(event.data);
+          };
+          setDataChannel(event.channel, senderId);
+          event.channel.send("message from request");
+        };
+        addDataPeer(pc, senderId);
+      }
+    }
+  );
+  socket.on(
+    "dataIceCandidate",
+    async (dataIceCandidate: RTCIceCandidateInit, senderId: string) => {
+      if (dataPeerExist(senderId) && senderId === id) {
+        const peer = getDataPeerById(senderId);
+
+        if (peer) {
+          await peer.addIceCandidate(dataIceCandidate);
+        }
+      }
+    }
+  );
+};
+
+const getDataChannelById: (id: string) => RTCDataChannel | null = (id) => {
+  if (dataChannel && dataChannel.id === id) {
+    return dataChannel.channel;
+  } else {
+    return null;
+  }
+};
+
+const setDataChannel: (channel: RTCDataChannel, id: string) => void = (
+  channel,
+  id
+) => {
+  dataChannel = { channel, id };
+};
+
 export {
   handleSocket,
   createOffer,
@@ -446,4 +467,9 @@ export {
   getPeerById,
   peerConfiguration,
   connectPeer,
+  myId,
+  setPendingRequestId,
+  getPendingRequestId,
+  handleDataRequestSocket,
+  getDataChannelById,
 };

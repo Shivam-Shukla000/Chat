@@ -7,6 +7,7 @@ import { Socket } from "socket.io-client";
 import CreateLobby from "../component/CreateLobby";
 import SendFile from "../component/SendFile";
 import { useNavigate } from "react-router-dom";
+import PendingRequest from "../component/PendingRequest";
 type ILobbyData = {
   name: string;
   password: string;
@@ -30,6 +31,12 @@ const Browse: () => JSX.Element = () => {
     isOpen: sendFileState,
     onOpen: openSendFile,
     onClose: closeSendFile,
+  } = useDisclosure();
+
+  const {
+    isOpen: PendingRequestState,
+    onOpen: openPendingRequest,
+    onClose: closePendingRequest,
   } = useDisclosure();
 
   const socket = useSocketStore((state) => {
@@ -81,6 +88,21 @@ const Browse: () => JSX.Element = () => {
     <>
       <Flex flexDirection={"column"}>
         <Flex margin={"0px"} padding={"1%"} justifyContent={"end"} id="btns">
+          {/* <Button colorScheme="blue" margin={btnMargin} onClick={openSendFile}>
+            Pending Request
+          </Button> */}
+          <Button
+            colorScheme="blue"
+            margin={btnMargin}
+            onClick={openPendingRequest}
+          >
+            Pending Request
+          </Button>
+
+          <PendingRequest
+            closePendingRequest={closePendingRequest}
+            pendingRequestState={PendingRequestState}
+          />
           <Button colorScheme="blue" margin={btnMargin} onClick={openSendFile}>
             Send File
           </Button>

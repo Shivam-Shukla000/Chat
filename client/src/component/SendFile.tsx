@@ -23,10 +23,12 @@ import {
   getPeerById,
   peerConfiguration,
   connectPeer,
+  myId,
 } from "../utils/handleSocket";
 import { useState } from "react";
 import { Socket, connect } from "socket.io-client";
 import { useSocketStore } from "../store/store";
+import { RequestSpinner } from "./ConnectButton";
 
 type IAllPeers = {};
 
@@ -44,28 +46,30 @@ const SendFile = (props: {
   });
   const [id, setId] = useState<string>("");
   const [message, setMessage] = useState<string>("");
+  const [requestSpinner, setRequestSpinner] = useState<boolean>(true);
   const setError = (message: string) => {
     setMessage(message);
   };
-  //   const connectPeer = () => {
-  //     if (peerExist(id)) {
-  //       peer = getPeerById(id);
-  //       console.log(peer);
-  //     }
-  //     if (peer) {
-  //       const dataChannel = peer.createDataChannel("myChannel");
-  //       console.log("channel made");
-  //       dataChannel.onopen = (event) => {
-  //         console.log("onopen", event);
-  //       };
-  //     }
-  //     // peer = new RTCPeerConnection(peerConfiguration);
-  //     // peer.onnegotiationneeded = async (event) => {
-  //     //     const sdpOffer = await peer?.createOffer()
-  //     //     socket?.emit("DataOffer", sdpOffer, userId)
-  //     // };
-  //     // peer.createDataChannel("dataChat");
-  //   };
+
+  const cbRequest = (bool: boolean) => {
+    if (bool && socket) {
+      // handleRequestSocket(socket, id);
+      setMessage("waiting for response");
+      setRequestSpinner(true);
+      socket.on("request-to-send-file-response", (senderId: string) => {
+        connectPeer(senderId, socket);
+      });
+    } else {
+      setMessage("user doesnt exist");
+      setRequestSpinner(false);
+    }
+  };
+
+  const handleClick = () => {
+    if (socket) {
+      socket.emit("request-to-send-file", myId, id, cbRequest);
+    }
+  };
 
   return (
     <>
@@ -105,16 +109,8 @@ const SendFile = (props: {
               {" "}
               {message}
             </Box>
-            <Button
-              onClick={() => {
-                if (socket) {
-                  connectPeer(id, socket);
-                }
-              }}
-              bg={"gray"}
-              colorScheme="blue"
-              mr={3}
-            >
+            {requestSpinner ? <RequestSpinner /> : ""}
+            <Button onClick={handleClick} bg={"gray"} colorScheme="blue" mr={3}>
               Connect
             </Button>
             <Button onClick={props.closeSendFile} variant="ghost">

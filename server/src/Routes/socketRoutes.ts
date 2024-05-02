@@ -9,6 +9,8 @@ import {
   handleDataSdpOffer,
   handleDataSdpAnswer,
   handleDataIceCandidate,
+  handleFileSendRequest,
+  handleFileSendRequestAccepted,
 } from "../controller/socketController";
 import { removeFromSocketArray } from "../lib/socketLib";
 
@@ -94,6 +96,12 @@ const socketRoutes = (socket: Socket, io: Server, userId: string) => {
       handleDataIceCandidate(dataIceCandidate, senderId, recieverId);
     }
   );
+  socket.on("request-to-send-file", (senderId, recieverId, cb) => {
+    handleFileSendRequest(senderId, recieverId, cb);
+  });
+  socket.on("request-to-send-file-response", (senderId, recieverId, cb) => {
+    handleFileSendRequestAccepted(senderId, recieverId, cb);
+  });
 };
 
 export { socketRoutes };

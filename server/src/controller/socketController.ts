@@ -129,6 +129,34 @@ const getRoomList = (cb: (lobbyData: ILobbyData[]) => void) => {
   cb(rooms);
 };
 
+const handleFileSendRequest: (
+  senderId: string,
+  recieverId: string,
+  cb: (bool: boolean) => void
+) => void = (senderId, recieverId, cb) => {
+  const socket = getSocketById(recieverId);
+  if (socket) {
+    socket.emit("request-to-send-file", senderId);
+    cb(true);
+  } else {
+    cb(false);
+  }
+};
+
+const handleFileSendRequestAccepted: (
+  senderId: string,
+  recieverId: string,
+  cb: () => void
+) => void = (senderId, recieverId, cb) => {
+  const socket = getSocketById(recieverId);
+  if (socket) {
+    console.log("accept");
+
+    socket.emit("request-to-send-file-response", senderId);
+    cb();
+  }
+};
+
 export {
   handleCreateRoom,
   handleOffer,
@@ -139,4 +167,6 @@ export {
   handleDataSdpOffer,
   handleDataSdpAnswer,
   handleDataIceCandidate,
+  handleFileSendRequest,
+  handleFileSendRequestAccepted,
 };
