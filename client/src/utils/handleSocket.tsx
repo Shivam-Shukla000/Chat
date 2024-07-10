@@ -15,10 +15,7 @@ type IPeers = {
   userId: string;
   peer: RTCPeerConnection;
 };
-type IDataPeers = {
-  userId: string;
-  peer: RTCPeerConnection;
-};
+
 type IRemoteStreams = {
   stream: MediaStream;
   id: string;
@@ -26,10 +23,8 @@ type IRemoteStreams = {
 
 let remoteStreams: IRemoteStreams[] = [];
 let remotePeers: IPeers[] = [];
-let dataPeers: IDataPeers[] = [];
 let localStream: MediaStream;
 let myId: string;
-let dataChannel: { channel: RTCDataChannel; id: string } | null = null;
 let pendingRequestId: string | null = null;
 
 const setPendingRequestId = (id: string | null) => {
@@ -40,88 +35,15 @@ const getPendingRequestId = () => {
   return pendingRequestId;
 };
 
-const addDataPeer: (peer: RTCPeerConnection, id: string) => void = (
-  peer,
-  id
-) => {
-  dataPeers.push({ peer: peer, userId: id });
-};
-
-const getDataPeerById: (userId: string) => RTCPeerConnection | null = (
-  userId
-) => {
-  for (let peerObj of dataPeers) {
-    if (peerObj.userId === userId) {
-      return peerObj.peer;
-    }
-  }
-  return null;
-};
-
-const dataPeerExist = (userId: string) => {
-  if (dataPeers.length === 0) {
-    return false;
-  }
-  for (let peerObject of dataPeers) {
-    if (peerObject.userId === userId) {
-      return true;
-    }
-  }
-  return false;
-};
-
-const connectPeer = (id: string, socket: Socket) => {
-  let peer: RTCPeerConnection | null = null;
-  if (dataPeerExist(id)) {
-    peer = getDataPeerById(id);
-  } else {
-    peer = new RTCPeerConnection(peerConfiguration);
-  }
-  socket.on(
-    "dataSdpAnswer",
-    async (dataSdpAnswer: RTCSessionDescription, senderId: string) => {
-      if (peer && senderId === id) {
-        await peer.setRemoteDescription(dataSdpAnswer);
-      }
-    }
-  );
-  if (peer) {
-    peer.onnegotiationneeded = async (event) => {
-      const sdpOffer = await peer.createOffer();
-      await peer.setLocalDescription(sdpOffer);
-      socket.emit("dataSdpOffer", sdpOffer, myId, id);
-    };
-    peer.onicecandidate = (event) => {
-      if (event.candidate) {
-        socket.emit("dataIceCandidate", event.candidate, myId, id);
-      }
-    };
-
-    const dataChannel = peer.createDataChannel("myChannel");
-
-    dataChannel.onopen = (event) => {
-      dataChannel.onmessage = (event) => {};
-      dataChannel.send("msg from sender");
-    };
-    setDataChannel(dataChannel, id);
-    addDataPeer(peer, id);
-  }
-  // peer = new RTCPeerConnection(peerConfiguration);
-  // peer.onnegotiationneeded = async (event) => {
-  //     const sdpOffer = await peer?.createOffer()
-  //     socket?.emit("DataOffer", sdpOffer, userId)
-  // };
-  // peer.createDataChannel("dataChat");
-};
-
 const setStateOfMedia = (
   setRenderList: React.Dispatch<React.SetStateAction<JSX.Element[]>>
 ) => {
   const videos: JSX.Element[] = remoteStreams.map((stream) => {
     return (
       <>
-        <GridItem>
+        <GridItem bgSize={"100%"}>
           <video
+            width={"100%"}
             key={stream.id}
             id={stream.id}
             ref={(ref) => {
@@ -400,64 +322,6 @@ const handleSocket = (
   });
 };
 
-const handleDataRequestSocket = (socket: Socket, id: string) => {
-  socket.on(
-    "dataSdpOffer",
-    async (dataSdpOffer: RTCSessionDescription, senderId: string) => {
-      if (!dataPeerExist(senderId) && senderId === id) {
-        let pc = new RTCPeerConnection(peerConfiguration);
-        await pc.setRemoteDescription(dataSdpOffer);
-
-        const dataSdpAnswer = await pc.createAnswer();
-
-        pc.setLocalDescription(dataSdpAnswer);
-
-        socket.emit("dataSdpAnswer", dataSdpAnswer, myId, senderId);
-        pc.onicecandidate = (event) => {
-          if (event.candidate) {
-            socket.emit("dataIceCandidate", event.candidate, myId, senderId);
-          }
-        };
-        pc.ondatachannel = (event) => {
-          event.channel.onmessage = (event) => {
-            console.log(event.data);
-          };
-          setDataChannel(event.channel, senderId);
-          event.channel.send("message from request");
-        };
-        addDataPeer(pc, senderId);
-      }
-    }
-  );
-  socket.on(
-    "dataIceCandidate",
-    async (dataIceCandidate: RTCIceCandidateInit, senderId: string) => {
-      if (dataPeerExist(senderId) && senderId === id) {
-        const peer = getDataPeerById(senderId);
-
-        if (peer) {
-          await peer.addIceCandidate(dataIceCandidate);
-        }
-      }
-    }
-  );
-};
-
-const getDataChannelById: (id: string) => RTCDataChannel | null = (id) => {
-  if (dataChannel && dataChannel.id === id) {
-    return dataChannel.channel;
-  } else {
-    return null;
-  }
-};
-
-const setDataChannel: (channel: RTCDataChannel, id: string) => void = (
-  channel,
-  id
-) => {
-  dataChannel = { channel, id };
-};
-
 export {
   handleSocket,
   createOffer,
@@ -466,10 +330,7 @@ export {
   peerExist,
   getPeerById,
   peerConfiguration,
-  connectPeer,
   myId,
   setPendingRequestId,
   getPendingRequestId,
-  handleDataRequestSocket,
-  getDataChannelById,
 };

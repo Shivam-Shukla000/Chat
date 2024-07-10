@@ -7,15 +7,16 @@ const MyVideoStream = () => {
   return (
     <>
       <GridItem
-      // ref={(ref) => {
-      //   if (ref) {
-      //     console.log(
-      //       ref.childNodes.forEach((el) => {
-      //         console.log(el);
-      //       })
-      //     );
-      //   }
-      // }}
+        boxSize={"100%"}
+        // ref={(ref) => {
+        //   if (ref) {
+        //     console.log(
+        //       ref.childNodes.forEach((el) => {
+        //         console.log(el);
+        //       })
+        //     );
+        //   }
+        // }}
       >
         <video
           ref={(ref) => {

@@ -21,12 +21,14 @@ import { useEffect, useState } from "react";
 import { FaAngleDown } from "react-icons/fa6";
 import {
   getPendingRequestId,
-  handleDataRequestSocket,
   myId,
   setPendingRequestId,
 } from "../utils/handleSocket";
 import { useSocketStore } from "../store/store";
 import { RequestSpinner } from "./ConnectButton";
+import { DefaultEventsMap } from "@socket.io/component-emitter";
+import { Socket } from "socket.io-client";
+import { handleDataRequestSocket } from "../utils/handleFileShare";
 
 const RequestComponent = (props: {
   requestId: string;
