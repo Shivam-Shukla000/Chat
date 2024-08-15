@@ -103,25 +103,23 @@ const getPeerById: (peerId: string) => RTCPeerConnection | null = (
 const createPeerConnection = async (
   roomId: string,
   socket: Socket,
+  setLocalStream: (localStream: MediaStream) => void,
   userId: string,
   setSignal: () => void
 ) => {
   const pc = new RTCPeerConnection(peerConfiguration);
 
-  // if (!localStream) {
-  //   localStream = await navigator.mediaDevices.getUserMedia({
-  //     video: true,
-  //     audio: false,
-  //   });
-  // }
-  pc.onnegotiationneeded = () => {
-    createOffer(pc, roomId, socket, userId);
-  };
+  if (!localStream) {
+    localStream = await navigator.mediaDevices.getUserMedia({
+      video: true,
+      audio: false,
+    });
+  }
 
-  // localStream.getTracks().forEach((track) => {
-  //   pc.addTrack(track, localStream);
-  // });
-  // setLocalStream(localStream);
+  localStream.getTracks().forEach((track) => {
+    pc.addTrack(track, localStream);
+  });
+  setLocalStream(localStream);
 
   pc.ontrack = (event) => {
     if (!remoteStreamExist(userId)) {
@@ -140,26 +138,34 @@ const createPeerConnection = async (
       socket.emit("iceCandidate", event.candidate, roomId, myId, userId);
     }
   };
-  pc.oniceconnectionstatechange = (event) => {
-    console.log(event);
-  };
 
   return pc;
 };
 
 // runs after room-joined event
 const createOffer = async (
-  peer: RTCPeerConnection,
   roomId: string,
   socket: Socket,
-  userId: string
+  setLocalStream: (localStream: MediaStream) => void,
+  userId: string,
+  setSignal: () => void
 ) => {
   try {
     // create a rtc connection and add eventlisteners
-
+    const peer: RTCPeerConnection = await createPeerConnection(
+      roomId,
+      socket,
+      setLocalStream,
+      userId,
+      setSignal
+    );
+    peer.oniceconnectionstatechange = (event) => {
+      console.log("gathingState", peer.iceConnectionState);
+    };
     const sdpOffer = await peer.createOffer();
     await peer.setLocalDescription(sdpOffer);
     socket.emit("offer", sdpOffer, roomId, myId, userId);
+    return peer;
   } catch (error) {
     console.log("error" + error);
   }
@@ -170,16 +176,26 @@ const createAnswer = async (
   userId: string,
   socket: Socket,
   roomId: string,
-  peer: RTCPeerConnection
+  setLocalStream: (localStream: MediaStream) => void,
+  setSignal: () => void
 ) => {
+  //add offer as remote discription\
   try {
-    //add offer as remote discription
+    const peer = await createPeerConnection(
+      roomId,
+      socket,
+      setLocalStream,
+      userId,
+      setSignal
+    );
     await peer.setRemoteDescription(sdpOffer);
-
-    //now create answer and send it after setting it to localdescriptor
     const sdpAnswer = await peer.createAnswer();
     await peer.setLocalDescription(sdpAnswer);
+
+    //now creare answer and send it after setting it to localdescriptor
     socket.emit("answer", sdpAnswer, roomId, myId, userId);
+
+    return peer;
   } catch (error) {
     console.log("error", error);
   }
@@ -205,16 +221,9 @@ const handleSocket = (
       setPendingRequestId(senderId);
     });
 
-    socket.on("room-joined", async (roomData: string) => {
+    socket.on("room-joined", (roomData: string) => {
       const roomId1 = roomData.split("--|--")[1];
-
       setRoomId(roomId1);
-      if (!localStream) {
-        localStream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: false,
-        });
-      }
 
       // const peer = await createOffer(
       //   roomId1,
@@ -222,44 +231,23 @@ const handleSocket = (
       //   setLocalStream,
       //   id
       // );
-
-      // handling : send a request,myId to all user in room to make peer connection and send offer
-      socket.on("connectPeer", async (senderId) => {
-        if (myId !== senderId) {
-          const peer = await createPeerConnection(
-            roomId1,
-            socket,
-            senderId,
-            setSignal
-          );
-          if (peer) {
-            remotePeers.push({ peer, userId: senderId });
-          }
-        }
-      });
-
       socket.on("user-joined", async (userId: string) => {
-        // check peerExist to avoid making duplicate
+        // check peerExist to avoid making duplicates
 
         if (!peerExist(userId)) {
-          const peer = await createPeerConnection(
+          const peer = await createOffer(
             roomId1,
             socket,
+            setLocalStream,
             userId,
             setSignal
           );
-          console.log("user joined", peer);
 
           if (peer) {
             remotePeers.push({ peer, userId });
           }
-          localStream.getTracks().forEach((track) => {
-            peer.addTrack(track, localStream);
-          });
-          setLocalStream(localStream);
         }
       });
-      console.log("socket offer has been set up");
       socket.on(
         "offer",
         async (
@@ -267,31 +255,24 @@ const handleSocket = (
           senderId: string,
           recieverId: string
         ) => {
-          console.log("offer");
-
           if (recieverId === myId) {
-            let peer: RTCPeerConnection | null;
             if (!peerExist(senderId)) {
-              peer = await createPeerConnection(
-                roomId1,
-                socket,
+              // console.log("peer doesnt exist");
+              // console.log(peerExist(senderId));
+              // console.log(remotePeers.length);
+              // console.log(senderId);
+              // console.log("Boolean", !peerExist(senderId));
+              const peer = await createAnswer(
+                sdpOffer,
                 senderId,
+                socket,
+                roomId1,
+                setLocalStream,
                 setSignal
               );
-              remotePeers.push({ peer, userId: senderId });
-            } else {
-              peer = getPeerById(senderId);
-            }
-            console.log("ran Offer");
-
-            if (peer) {
-              console.log("adding tack to peer Offer", peer);
-
-              localStream.getTracks().forEach((track) => {
-                peer.addTrack(track, localStream);
-              });
-              setLocalStream(localStream);
-              createAnswer(sdpOffer, senderId, socket, roomId1, peer);
+              if (peer) {
+                remotePeers.push({ peer, userId: senderId });
+              }
             }
           }
         }
@@ -309,6 +290,7 @@ const handleSocket = (
               const peer = getPeerById(senderId);
 
               if (peer) {
+                peer.iceGatheringState;
                 peer.setRemoteDescription(sdpAnswer);
               }
             }
@@ -338,7 +320,6 @@ const handleSocket = (
           }
         }
       );
-      socket.emit("connectPeer", myId, roomId1);
     });
   });
 };

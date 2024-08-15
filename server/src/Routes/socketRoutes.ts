@@ -28,7 +28,7 @@ const socketRoutes = (socket: Socket, io: Server, userId: string) => {
       senderId: string,
       recieverId: string
     ) => {
-      console.log("offer sent");
+      io.to(roomId).emit("offer", "asdasdas");
       handleOffer(sdpOffer, roomId, socket, senderId, recieverId);
     }
   );
@@ -96,6 +96,9 @@ const socketRoutes = (socket: Socket, io: Server, userId: string) => {
       handleDataIceCandidate(dataIceCandidate, senderId, recieverId);
     }
   );
+  socket.on("connectPeer", (myId: string, roomId: string) => {
+    socket.to(roomId).emit("connectPeer", myId);
+  });
   socket.on("request-to-send-file", (senderId, recieverId, cb) => {
     handleFileSendRequest(senderId, recieverId, cb);
   });

@@ -1,12 +1,21 @@
 import { useEffect, useState } from "react";
 import { useSocketStore } from "../store/store";
 import MyVideoStream from "../component/MyVideoStream";
-import { Box, Button, Grid, AbsoluteCenter } from "@chakra-ui/react";
-import { setStateOfMedia } from "../utils/handleSocket";
+import {
+  Box,
+  Button,
+  Grid,
+  AbsoluteCenter,
+  Flex,
+  Spacer,
+} from "@chakra-ui/react";
+import { removeAudioFromTrack, setStateOfMedia } from "../utils/handleSocket";
+import { Socket } from "socket.io-client";
 
 const Lobby: () => JSX.Element = () => {
   const signal = useSocketStore((state) => state.signal);
   const setSignal = useSocketStore((state) => state.setSignal);
+  const socket = useSocketStore((state) => state.socket);
 
   // const setRemoteStreams = useSocketStore((state) => state.setRemoteStreams);
   type IRemoteStreams = {
@@ -20,6 +29,16 @@ const Lobby: () => JSX.Element = () => {
     setSignal();
   };
 
+  // const muteMic = () => {
+
+  //   removeAudioFromTrack(Peer)
+
+  //   if(socket) {
+
+  //     socket.emit("muteMic", userId, roomId)
+  //   }
+  // }
+
   useEffect(() => {
     const streamLength = setStateOfMedia(setRenderList);
     console.log(streamLength);
@@ -28,14 +47,24 @@ const Lobby: () => JSX.Element = () => {
 
   return (
     <>
-      <Box>
-        <Button onClick={handleRefresh}>refresh</Button>
-        <Grid templateColumns={colum} width={"100%"} height={"70%"}>
-          <MyVideoStream />
+      {" "}
+      <Flex height={"100%"} justifyContent={"end"} flexDirection={"column"}>
+        <Box>
+          <Button onClick={handleRefresh}>refresh</Button>
+          <Grid templateColumns={colum} width={"100%"} height={"70%"}>
+            <MyVideoStream />
 
-          {renderList}
-        </Grid>
-      </Box>
+            {renderList}
+          </Grid>
+        </Box>
+        <Spacer />
+        <Flex justifyContent={"space-around"}>
+          <Button>mute</Button>
+          <Button>defen</Button>
+
+          <Button>end call</Button>
+        </Flex>
+      </Flex>
     </>
   );
 };

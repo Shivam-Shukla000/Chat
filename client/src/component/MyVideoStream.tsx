@@ -1,4 +1,4 @@
-import { GridItem } from "@chakra-ui/react";
+import { AspectRatio, GridItem } from "@chakra-ui/react";
 import { useSocketStore } from "../store/store";
 
 const MyVideoStream = () => {
@@ -7,7 +7,7 @@ const MyVideoStream = () => {
   return (
     <>
       <GridItem
-        boxSize={"100%"}
+        padding={"1%"}
         // ref={(ref) => {
         //   if (ref) {
         //     console.log(
