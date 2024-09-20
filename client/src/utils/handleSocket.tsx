@@ -35,7 +35,21 @@ const getPendingRequestId = () => {
   return pendingRequestId;
 };
 
-const removeAudioFromTrack = () => {};
+const removeAudioFromTrack = async () => {
+  const media = await navigator.mediaDevices.getUserMedia({
+    video: true,
+    audio: false,
+  });
+  const track = media.getTracks()[0];
+  console.log(track);
+
+  track.enabled = false;
+  console.log(track);
+
+  // remotePeers.forEach((peerObj) => {
+  //   peerObj.peer.addTrack(track, media);
+  // });
+};
 
 const setStateOfMedia = (
   setRenderList: React.Dispatch<React.SetStateAction<JSX.Element[]>>
@@ -128,7 +142,11 @@ const createPeerConnection = async (
       remoteStreams.push({ stream: event.streams[0], id: userId });
       setSignal();
       event.streams.forEach((stream) => {
+        console.log("steam", stream);
+
         stream.getTracks().forEach((track) => {
+          console.log("track", track);
+
           pc.addTrack(track);
         });
       });
@@ -182,6 +200,7 @@ const createAnswer = async (
     socket.emit("answer", sdpAnswer, roomId, myId, userId);
   } catch (error) {
     console.log("error", error);
+    0;
   }
 };
 
@@ -222,22 +241,7 @@ const handleSocket = (
       //   setLocalStream,
       //   id
       // );
-
-      // handling : send a request,myId to all user in room to make peer connection and send offer
-      socket.on("connectPeer", async (senderId) => {
-        if (myId !== senderId) {
-          const peer = await createPeerConnection(
-            roomId1,
-            socket,
-            senderId,
-            setSignal
-          );
-          if (peer) {
-            remotePeers.push({ peer, userId: senderId });
-          }
-        }
-      });
-
+      /**
       socket.on("user-joined", async (userId: string) => {
         // check peerExist to avoid making duplicate
 
@@ -253,13 +257,34 @@ const handleSocket = (
           if (peer) {
             remotePeers.push({ peer, userId });
           }
-          localStream.getTracks().forEach((track) => {
-            peer.addTrack(track, localStream);
-          });
+          // localStream.getTracks().forEach((track) => {
+          //   peer.addTrack(track, localStream);
+          // });
           setLocalStream(localStream);
         }
       });
-      console.log("socket offer has been set up");
+       */
+
+      // handling : send a request,myId to all user in room to make peer connection and send offer
+      socket.on("connectPeer", async (senderId) => {
+        if (myId !== senderId) {
+          const peer = await createPeerConnection(
+            roomId1,
+            socket,
+            senderId,
+            setSignal
+          );
+          if (peer) {
+            localStream.getTracks().forEach((track) => {
+              peer.addTrack(track, localStream);
+            });
+            setLocalStream(localStream);
+            remotePeers.push({ peer, userId: senderId });
+          }
+        }
+      });
+
+      // handling: sdpOffer sent by peer
       socket.on(
         "offer",
         async (
@@ -296,7 +321,7 @@ const handleSocket = (
           }
         }
       );
-
+      // handling: sdpAnswer sent by peer that recieved sdpOffer
       socket.on(
         "answer",
         async (
@@ -317,7 +342,7 @@ const handleSocket = (
           }
         }
       );
-
+      // handling: iceCandidate sent by peer that generate it
       socket.on(
         "iceCandidate",
         (

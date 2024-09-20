@@ -10,7 +10,7 @@ import Layouts from "./Layouts";
 import About from "./views/About";
 import connect from "./utils/connect";
 import { useEffect } from "react";
-import { createOffer, handleSocket } from "./utils/handleSocket";
+import { handleSocket } from "./utils/handleSocket";
 // import { disconnectHandler } from "./store/socketHandle";
 
 function App() {

@@ -56,7 +56,9 @@ const handleJoinRoom = async (
   clearSocketRooms(socket);
   socket.join(roomId);
   socket.emit("room-joined", `roomId--|--${roomId}`);
-  socket.to(roomId).emit("user-joined", userId);
+  console.log(userId);
+
+  // socket.to(roomId).emit("user-joined", userId);
 };
 
 const handleOffer = (

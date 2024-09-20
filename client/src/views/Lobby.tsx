@@ -59,7 +59,7 @@ const Lobby: () => JSX.Element = () => {
         </Box>
         <Spacer />
         <Flex justifyContent={"space-around"}>
-          <Button>mute</Button>
+          <Button onClick={removeAudioFromTrack}>mute</Button>
           <Button>defen</Button>
 
           <Button>end call</Button>
